@@ -113,14 +113,18 @@ button{font:inherit;color:inherit}
 .link.done{background:var(--ok)}
 .mission{display:grid;gap:4px}
 .mlabel{font-size:.72rem;letter-spacing:.14em;color:var(--ink);font-weight:700}
-.mtitle{font-family:var(--f-koma);font-weight:900;font-size:1.25rem;margin:0;text-wrap:balance;display:flex;align-items:center;gap:8px}
+.mtitle{font-family:var(--f-koma);font-weight:900;font-size:1.25rem;margin:0;display:flex;align-items:center;gap:8px;height:1.7em;white-space:nowrap;overflow:hidden}
+.mtitle .t{overflow:hidden;text-overflow:ellipsis}
 .mgoal{margin:0;color:var(--muted);font-size:.9rem;max-width:60ch}
-.mactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center}
-.check{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--ok);color:var(--surface);font-size:.9rem;flex:0 0 auto}
+/* fixed-height rows so the quest panel never changes size between phases (keeps the board still) */
+.mission .mgoal{min-height:3.2em}
+.mactions{display:flex;gap:8px;flex-wrap:nowrap;margin-top:6px;align-items:center;height:40px;overflow:hidden}
+.mactions .btn{white-space:nowrap}
+.check{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ok);color:var(--surface);font-size:.9rem;flex:0 0 auto}
 @keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.18)}100%{transform:scale(1)}}
 .check.pop{animation:pop .35s ease-out}
 .mission.cleared .mlabel{color:var(--ok)}
-.doneline{color:var(--ok);font-weight:700;font-size:.9rem}
+.doneline{color:var(--ok);font-weight:700;font-size:.9rem;white-space:nowrap}
 
 .main{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:22px;align-items:start}
 @media (max-width:760px){.main{grid-template-columns:minmax(0,1fr)}}
@@ -885,7 +889,7 @@ function renderMission(){
   const ms=missions(cur),m=ms[mi],d=doneOf(cur),el=$('mission');
   const cleared=d[mi];
   const head=`<div class="mlabel">${m.final?'FINAL MISSION':'MISSION '+(mi+1)+' / '+(ms.length-1)}</div>
-    <h2 class="mtitle">${cleared?`<span class="check${justCleared?' pop':''}" aria-hidden="true">✓</span>`:''}${m.title}</h2>
+    <h2 class="mtitle">${cleared?`<span class="check${justCleared?' pop':''}" aria-hidden="true">✓</span>`:''}<span class="t">${m.title}</span></h2>
     <p class="mgoal">${m.goal}</p>`;
   let act='';
   if(phase==='intro')act=`<button class="btn" id="aDemo">お手本を見る</button><button class="btn primary" id="aPlay">${cleared?'もう一度挑戦':'挑戦する'}</button>`;
@@ -893,7 +897,7 @@ function renderMission(){
   else if(phase==='play')act=`<button class="btn" id="aHint">ヒント</button><button class="btn" id="aRetry">やり直す</button>`;
   else if(phase==='fail')act=`<button class="btn primary" id="aPlay">もう一度</button>`;
   else if(phase==='clear'){
-    act=mi+1<ms.length?`<span class="doneline">クリア！ まもなく次のミッション</span><button class="btn" id="aNext">すぐに進む →</button>`
+    act=mi+1<ms.length?`<span class="doneline">クリア！</span><button class="btn" id="aNext">すぐに進む →</button>`
             :`<button class="btn primary" id="aBack">バリエーション一覧へ</button><button class="btn" id="aPlay">もう一度</button>`;
   }
   el.className='mission'+(cleared?' cleared':'');
