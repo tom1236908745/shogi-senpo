@@ -141,22 +141,23 @@ button{font:inherit;color:inherit}
 .hp .n{position:absolute;right:-5px;bottom:-4px;min-width:17px;height:17px;border-radius:9px;background:var(--ink);color:var(--surface);
   font-size:.68rem;font-weight:700;display:grid;place-items:center;padding:0 4px;line-height:1}
 .stand.gote .hp .n{right:auto;left:-5px;top:-4px;bottom:auto}
-.boardframe{display:grid;grid-template-columns:minmax(0,1fr) 18px;grid-template-rows:auto auto;gap:2px 4px;padding:10px 6px 10px 10px;
+.boardframe{--cw:36px;--ch:39px;display:grid;grid-template-columns:auto 18px;grid-template-rows:auto auto;justify-content:start;gap:2px 4px;padding:10px 6px 10px 10px;
   background:linear-gradient(160deg,var(--kaya),var(--kaya-2));border-radius:4px;box-shadow:0 8px 22px -12px rgba(60,40,10,.5);
   -webkit-user-select:none;user-select:none}
-.files{grid-column:1;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));font-size:.7rem;color:var(--grid);text-align:center;line-height:1.4}
-.ranks{grid-column:2;grid-row:2;display:grid;grid-template-rows:repeat(9,minmax(0,1fr));font-size:.7rem;color:var(--grid);align-items:center;justify-items:center;font-family:var(--f-koma);padding-block:2px}
-.board{grid-column:1;grid-row:2;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));border:2px solid var(--grid);background:var(--kaya)}
-.sq{position:relative;aspect-ratio:11/12;border:.5px solid var(--grid);background:none;padding:0;margin:0;min-width:0;min-height:0;overflow:hidden;
+.files{grid-column:1;display:grid;grid-template-columns:repeat(9,var(--cw));column-gap:1px;padding-inline:2px;font-size:.7rem;color:var(--grid);text-align:center;line-height:1.4}
+.ranks{grid-column:2;grid-row:2;display:grid;grid-template-rows:repeat(9,var(--ch));row-gap:1px;font-size:.7rem;color:var(--grid);align-items:center;justify-items:center;font-family:var(--f-koma);padding-block:2px}
+/* grid lines = 1px gaps over the line color; cell sizes are whole pixels (set in JS) so every line renders at the same width */
+.board{grid-column:1;grid-row:2;display:grid;grid-template-columns:repeat(9,var(--cw));grid-template-rows:repeat(9,var(--ch));gap:1px;border:2px solid var(--grid);background:var(--grid)}
+.sq{position:relative;border:0;background:var(--kaya);padding:0;margin:0;min-width:0;min-height:0;overflow:hidden;
   cursor:default;font-size:0;line-height:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-appearance:none;appearance:none;border-radius:0}
 .board.play .sq{cursor:pointer}
-.sq.last{background:var(--hl-last)}
-.sq.sel{background:var(--hl-sel)}
+.sq.last{background:linear-gradient(var(--hl-last),var(--hl-last)),var(--kaya)}
+.sq.sel{background:linear-gradient(var(--hl-sel),var(--hl-sel)),var(--kaya)}
 .sq.hint{box-shadow:inset 0 0 0 3px var(--shu)}
 .sq.tg::after{content:"";position:absolute;left:37%;top:37%;width:26%;height:26%;border-radius:50%;background:var(--hl-dot)}
 .sq.tg.cap::after{left:8%;top:8%;width:84%;height:84%;background:none;border:3px solid var(--hl-dot)}
 .koma{position:absolute;inset:5% 7% 4%;pointer-events:none;background:linear-gradient(180deg,var(--koma),var(--koma-2));clip-path:polygon(50% 0,86% 16%,100% 100%,0 100%,14% 16%);
-  display:grid;place-items:center;font-family:var(--f-koma);font-weight:900;color:var(--koma-ink);font-size:clamp(13px,4.4vw,22px);line-height:1;padding-top:14%;
+  display:grid;place-items:center;font-family:var(--f-koma);font-weight:900;color:var(--koma-ink);font-size:calc(var(--cw) * .58);line-height:1;padding-top:14%;
   filter:drop-shadow(0 1px 0 var(--koma-edge))}
 .hp .koma{font-size:19px}
 .koma.g{transform:rotate(180deg)}
@@ -824,7 +825,16 @@ function buildLessonScreen(){
       </div>
     </div></div>`;
   $('back').onclick=()=>openStrat(L.strat);
+  fitBoard();
 }
+function fitBoard(){
+  const col=document.querySelector('.boardcol'),fr=document.querySelector('.boardframe');if(!col||!fr)return;
+  const avail=col.clientWidth-16-18-4-4-8;           // frame padding, rank labels, gap, board border, 8 inner lines
+  const cw=Math.max(24,Math.min(48,Math.floor(avail/9)));
+  fr.style.setProperty('--cw',cw+'px');fr.style.setProperty('--ch',Math.round(cw*12/11)+'px');
+  const extra=avail-cw*9;fr.style.paddingLeft=(10+Math.floor(extra/2))+'px';fr.style.paddingRight=(6+Math.ceil(extra/2))+'px';  // whole-pixel centering
+}
+window.addEventListener('resize',fitBoard);
 function setupMission(){
   clearTimer();const m=missions(cur)[mi];
   phase='intro';idx=m.start;sel=null;hint=false;miss=0;hintUsed=false;justCleared=false;fb='';fbc='';render();
@@ -851,7 +861,11 @@ function clearMission(){
   const m=missions(cur)[mi];
   if(m.final&&(miss>0||hintUsed)){phase='fail';fb=`最後まで指せた！ ただしミス${miss}回${hintUsed?'・ヒント使用':''}。ノーミスでもう一度。`;fbc='ng';render();return;}
   doneOf(cur)[mi]=true;save();phase='clear';justCleared=true;
-  fb=m.final?'このバリエーションを制覇！ 手順が身についている。':'ミッション達成！';fbc='ok';render();
+  fb=m.final?'このバリエーションを制覇！ 手順が身についている。':'ミッション達成！ 次のミッションへ進みます…';fbc='ok';render();
+  if(mi+1<missions(cur).length){
+    timer=setTimeout(()=>{timer=null;mi++;startPlay();
+      const nm=missions(cur)[mi];fb=(nm.final?'総仕上げ：':'次のミッション：')+nm.title;fbc='ok';renderInfo();},1300);
+  }
 }
 function nextMission(){mi++;setupMission();}
 
@@ -879,7 +893,7 @@ function renderMission(){
   else if(phase==='play')act=`<button class="btn" id="aHint">ヒント</button><button class="btn" id="aRetry">やり直す</button>`;
   else if(phase==='fail')act=`<button class="btn primary" id="aPlay">もう一度</button>`;
   else if(phase==='clear'){
-    act=mi+1<ms.length?`<span class="doneline">次のミッションが解放された</span><button class="btn primary" id="aNext">次のミッションへ →</button>`
+    act=mi+1<ms.length?`<span class="doneline">クリア！ まもなく次のミッション</span><button class="btn" id="aNext">すぐに進む →</button>`
             :`<button class="btn primary" id="aBack">バリエーション一覧へ</button><button class="btn" id="aPlay">もう一度</button>`;
   }
   el.className='mission'+(cleared?' cleared':'');
