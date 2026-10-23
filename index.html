@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>将棋戦法ドリル</title>
+<meta name="description" content="将棋の戦法を、相手の作戦別バリエーションとクエスト形式で覚える">
+<meta name="theme-color" content="#27365f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="戦法ドリル">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+img{max-width:100%}[hidden]{display:none!important}
+html,body{touch-action:manipulation}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@600;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: home (strategies) → strategy (variations grouped by opponent setup) → lesson (quest bar on top, board with piece stands, commentary) */
+:root{
+  --bg:#e9ebe6; --surface:#f7f8f4; --fg:#1d2230; --muted:#5d6472; --line:#cfd3cb;
+  --ink:#27365f; --ink-soft:#dfe3ee; --shu:#b5432a; --ok:#2e7a4d; --ok-soft:#dcefe2;
+  --kaya:#e2b867; --kaya-2:#d6a653; --stand:#c99a52; --stand-2:#b8873f; --grid:#5b3e17;
+  --koma:#f4dfad; --koma-2:#e9cf92; --koma-edge:#a87b3a; --koma-ink:#1a1408; --koma-pr:#b11d0f;
+  --hl-last:rgba(181,67,42,.22); --hl-sel:rgba(39,54,95,.30); --hl-dot:rgba(39,54,95,.55);
+  --f-koma:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-ui:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#15171c; --surface:#1e2128; --fg:#e8e5dd; --muted:#a2a6b0; --line:#30343d;
+  --ink:#9fb2ea; --ink-soft:#262c3d; --shu:#e07a5f; --ok:#6cc08f; --ok-soft:#1d3127;
+  --kaya:#b98d47; --kaya-2:#a97d3b; --stand:#8f6a33; --stand-2:#7c5a29; --grid:#3a280f;
+  --koma:#ead39d; --koma-2:#dcc086; --koma-edge:#8a6328; --koma-ink:#1a1408; --koma-pr:#a3170b;
+  --hl-last:rgba(224,122,95,.35); --hl-sel:rgba(159,178,234,.40); --hl-dot:rgba(30,40,80,.65);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15171c; --surface:#1e2128; --fg:#e8e5dd; --muted:#a2a6b0; --line:#30343d;
+  --ink:#9fb2ea; --ink-soft:#262c3d; --shu:#e07a5f; --ok:#6cc08f; --ok-soft:#1d3127;
+  --kaya:#b98d47; --kaya-2:#a97d3b; --stand:#8f6a33; --stand-2:#7c5a29; --grid:#3a280f;
+  --koma:#ead39d; --koma-2:#dcc086; --koma-edge:#8a6328; --koma-ink:#1a1408; --koma-pr:#a3170b;
+  --hl-last:rgba(224,122,95,.35); --hl-sel:rgba(159,178,234,.40); --hl-dot:rgba(30,40,80,.65);
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
+.wrap{max-width:980px;margin:0 auto}
+button{font:inherit;color:inherit}
+.btn{font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:6px;padding:8px 14px;cursor:pointer;min-height:40px}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink);font-weight:700}
+.btn.ghost{background:none;border-color:transparent;padding-inline:6px}
+:focus-visible{outline:2px solid var(--shu);outline-offset:2px}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.screen{animation:rise .25s ease-out both;display:grid;gap:16px}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;flex:1;max-width:260px}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:3px}
+.lv{font-size:.7rem;letter-spacing:.06em;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:0 6px;white-space:nowrap}
+
+/* home */
+.hero h1{font-family:var(--f-koma);font-weight:900;font-size:clamp(1.8rem,6vw,2.4rem);margin:0;color:var(--ink);letter-spacing:.04em}
+.hero p{margin:2px 0 0;color:var(--muted);max-width:60ch}
+.total{display:flex;align-items:center;gap:10px;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.group h2{font-size:.78rem;letter-spacing:.14em;color:var(--muted);margin:6px 0 8px;font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;cursor:pointer;display:grid;gap:6px}
+.card:hover{border-color:var(--ink)}
+.card .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card h3{font-family:var(--f-koma);font-weight:900;font-size:1.3rem;margin:0}
+.card p{margin:0;font-size:.85rem;color:var(--muted)}
+.card .prog{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.card .prog .bar{max-width:none}
+.card.clear{border-color:var(--ok)}
+.badge{color:var(--ok);font-weight:700}
+
+/* strategy */
+.shead{display:grid;gap:4px}
+.shead .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.shead h1{font-family:var(--f-koma);font-weight:900;font-size:1.9rem;margin:0;color:var(--ink)}
+.shead p{margin:0;color:var(--muted);max-width:60ch;font-size:.9rem}
+.vgroup{display:grid;gap:8px}
+.vgroup h2{margin:0;font-family:var(--f-koma);font-weight:900;font-size:1.05rem;display:flex;justify-content:space-between;align-items:baseline;
+  border-bottom:1px solid var(--grid);padding-bottom:3px}
+.vgroup h2 small{font-family:var(--f-ui);font-weight:400;font-size:.72rem;color:var(--muted)}
+.vrow{display:grid;grid-template-columns:4px minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;background:var(--surface);
+  border:1px solid var(--line);border-radius:8px;padding:12px 14px 12px 0;cursor:pointer;overflow:hidden}
+.vrow:hover{border-color:var(--ink)}
+.vrow .stripe{align-self:stretch;background:var(--line)}
+.vrow.part .stripe{background:var(--ink)}
+.vrow.clear .stripe{background:var(--ok)}
+.vrow b{font-size:1rem;display:block}
+.vrow span.d{font-size:.82rem;color:var(--muted);display:block}
+.vrow .st{font-size:.75rem;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;display:grid;gap:2px;justify-items:end}
+
+/* lesson */
+.lhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lhead h1{font-family:var(--f-koma);font-weight:900;font-size:1.4rem;margin:0}
+.lhead .sub{font-size:.78rem;color:var(--muted)}
+.quest{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:12px}
+.steps{display:flex;gap:6px;align-items:center;overflow-x:auto;padding:2px 2px 4px}
+.step{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;
+  font-size:.82rem;font-weight:700;color:var(--muted);background:var(--bg);padding:0;font-variant-numeric:tabular-nums}
+.step.done{background:var(--ok);border-color:var(--ok);color:var(--surface);cursor:pointer}
+.step.now{border-color:var(--ink);color:var(--ink);box-shadow:0 0 0 3px var(--ink-soft)}
+.step.done.now{color:var(--surface);box-shadow:0 0 0 3px var(--ok-soft)}
+.step.final{border-radius:8px;width:auto;padding:0 10px}
+.link{flex:0 0 14px;height:2px;background:var(--line)}
+.link.done{background:var(--ok)}
+.mission{display:grid;gap:4px}
+.mlabel{font-size:.72rem;letter-spacing:.14em;color:var(--ink);font-weight:700}
+.mtitle{font-family:var(--f-koma);font-weight:900;font-size:1.25rem;margin:0;text-wrap:balance;display:flex;align-items:center;gap:8px}
+.mgoal{margin:0;color:var(--muted);font-size:.9rem;max-width:60ch}
+.mactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.check{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--ok);color:var(--surface);font-size:.9rem;flex:0 0 auto}
+@keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.18)}100%{transform:scale(1)}}
+.check.pop{animation:pop .35s ease-out}
+.mission.cleared .mlabel{color:var(--ok)}
+.doneline{color:var(--ok);font-weight:700;font-size:.9rem}
+
+.main{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:760px){.main{grid-template-columns:minmax(0,1fr)}}
+.boardcol{display:grid;gap:8px;min-width:0}
+/* piece stands */
+.stand{display:flex;align-items:center;gap:8px;min-height:52px;padding:6px 10px;border-radius:4px;
+  background:linear-gradient(180deg,var(--stand),var(--stand-2));box-shadow:inset 0 -2px 0 rgba(0,0,0,.15)}
+.stand.gote{flex-direction:row-reverse}
+.stand .who{font-size:.72rem;font-weight:700;color:var(--koma-ink);background:var(--koma);border-radius:3px;padding:1px 6px;white-space:nowrap;flex:0 0 auto}
+.stand .pcs{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.stand.gote .pcs{justify-content:flex-end}
+.stand .empty{font-size:.75rem;color:var(--koma-ink);opacity:.6}
+.hp{position:relative;width:34px;height:38px;border:0;background:none;padding:0;flex:0 0 auto;cursor:default;-webkit-tap-highlight-color:transparent}
+.hp .koma{inset:0}
+.hp.can{cursor:pointer}
+.hp.sel{outline:3px solid var(--ink);outline-offset:1px;border-radius:4px}
+.hp.hint{outline:3px solid var(--shu);outline-offset:1px;border-radius:4px}
+.hp .n{position:absolute;right:-5px;bottom:-4px;min-width:17px;height:17px;border-radius:9px;background:var(--ink);color:var(--surface);
+  font-size:.68rem;font-weight:700;display:grid;place-items:center;padding:0 4px;line-height:1}
+.stand.gote .hp .n{right:auto;left:-5px;top:-4px;bottom:auto}
+.boardframe{display:grid;grid-template-columns:minmax(0,1fr) 18px;grid-template-rows:auto auto;gap:2px 4px;padding:10px 6px 10px 10px;
+  background:linear-gradient(160deg,var(--kaya),var(--kaya-2));border-radius:4px;box-shadow:0 8px 22px -12px rgba(60,40,10,.5);
+  -webkit-user-select:none;user-select:none}
+.files{grid-column:1;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));font-size:.7rem;color:var(--grid);text-align:center;line-height:1.4}
+.ranks{grid-column:2;grid-row:2;display:grid;grid-template-rows:repeat(9,minmax(0,1fr));font-size:.7rem;color:var(--grid);align-items:center;justify-items:center;font-family:var(--f-koma);padding-block:2px}
+.board{grid-column:1;grid-row:2;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));border:2px solid var(--grid);background:var(--kaya)}
+.sq{position:relative;aspect-ratio:11/12;border:.5px solid var(--grid);background:none;padding:0;margin:0;min-width:0;min-height:0;overflow:hidden;
+  cursor:default;font-size:0;line-height:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-appearance:none;appearance:none;border-radius:0}
+.board.play .sq{cursor:pointer}
+.sq.last{background:var(--hl-last)}
+.sq.sel{background:var(--hl-sel)}
+.sq.hint{box-shadow:inset 0 0 0 3px var(--shu)}
+.sq.tg::after{content:"";position:absolute;left:37%;top:37%;width:26%;height:26%;border-radius:50%;background:var(--hl-dot)}
+.sq.tg.cap::after{left:8%;top:8%;width:84%;height:84%;background:none;border:3px solid var(--hl-dot)}
+.koma{position:absolute;inset:5% 7% 4%;pointer-events:none;background:linear-gradient(180deg,var(--koma),var(--koma-2));clip-path:polygon(50% 0,86% 16%,100% 100%,0 100%,14% 16%);
+  display:grid;place-items:center;font-family:var(--f-koma);font-weight:900;color:var(--koma-ink);font-size:clamp(13px,4.4vw,22px);line-height:1;padding-top:14%;
+  filter:drop-shadow(0 1px 0 var(--koma-edge))}
+.hp .koma{font-size:19px}
+.koma.g{transform:rotate(180deg)}
+.koma.pr{color:var(--koma-pr)}
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.board.shake{animation:nudge .25s 2}
+.side{display:grid;gap:14px;min-width:0}
+.movebox{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:6px;min-height:130px}
+.moverow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.mv{font-family:var(--f-koma);font-weight:900;font-size:1.4rem}
+.count{color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums}
+.comment{margin:0;max-width:60ch}
+.fb{font-weight:700;font-size:.9rem;min-height:1.4em}
+.fb.ok{color:var(--ok)} .fb.ng{color:var(--shu)}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:520px){.notes{grid-template-columns:1fr}}
+.notes h3{font-size:.78rem;letter-spacing:.12em;margin:0 0 4px;color:var(--ink)}
+.notes .warn h3{color:var(--shu)}
+.notes ul{margin:0;padding-left:1.1em;font-size:.88rem}
+.notes li+li{margin-top:4px}
+.kifu{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:.8rem;color:var(--muted)}
+.kifu b{color:var(--fg)}
+@media (prefers-reduced-motion:reduce){.screen,.check.pop,.board.shake{animation:none}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap" id="app"></div>
+
+<script>
+// ---- engine ----
+const KANJI={K:'玉',R:'飛',B:'角',G:'金',S:'銀',N:'桂',L:'香',P:'歩'};
+const PROM={R:'龍',B:'馬',S:'全',N:'圭',L:'杏',P:'と'};
+const RANKS='〇一二三四五六七八九';
+const FW='０１２３４５６７８９';
+function initPos(){
+  const b={};const put=(f,r,t,s)=>{b[f*10+r]={t,s,p:false};};
+  const back=['L','N','S','G','K','G','S','N','L'];
+  for(let f=1;f<=9;f++){put(f,9,back[f-1],0);put(f,1,back[f-1],1);put(f,7,'P',0);put(f,3,'P',1);}
+  put(8,8,'B',0);put(2,8,'R',0);put(2,2,'B',1);put(8,2,'R',1);
+  return {b,h:[{},{}],turn:0};
+}
+function clonePos(p){const b={};for(const k in p.b)b[k]={...p.b[k]};return {b,h:[{...p.h[0]},{...p.h[1]}],turn:p.turn};}
+function pathClear(b,ff,fr,tf,tr){
+  const sf=Math.sign(tf-ff),sr=Math.sign(tr-fr);let f=ff+sf,r=fr+sr;
+  while(f!==tf||r!==tr){if(b[f*10+r])return false;f+=sf;r+=sr;}return true;
+}
+function canReach(pos,from,to){
+  const pc=pos.b[from];if(!pc||from===to)return false;
+  const tf=Math.floor(to/10),tr=to%10;if(tf<1||tf>9||tr<1||tr>9)return false;
+  const tgt=pos.b[to];if(tgt&&tgt.s===pc.s)return false;
+  const ff=Math.floor(from/10),fr=from%10;const dx=tf-ff,dxa=Math.abs(dx);
+  const rel=(tr-fr)*(pc.s===0?-1:1),ra=Math.abs(rel);
+  const king=Math.max(dxa,ra)===1;
+  const gold=(rel===1&&dxa<=1)||(rel===0&&dxa===1)||(rel===-1&&dxa===0);
+  const t=pc.t;
+  if(pc.p&&'SNLP'.includes(t))return gold;
+  switch(t){
+    case 'P':return rel===1&&dx===0;
+    case 'L':return dx===0&&rel>0&&pathClear(pos.b,ff,fr,tf,tr);
+    case 'N':return rel===2&&dxa===1;
+    case 'S':return (rel===1&&dxa<=1)||(rel===-1&&dxa===1);
+    case 'G':return gold;
+    case 'K':return king;
+    case 'R':return ((dx===0||rel===0)&&pathClear(pos.b,ff,fr,tf,tr))||(pc.p&&king);
+    case 'B':return (dxa===ra&&pathClear(pos.b,ff,fr,tf,tr))||(pc.p&&king);
+  }return false;
+}
+function dropTargets(pos,t,side){const out=[];for(let f=1;f<=9;f++){let nifu=false;if(t==='P')for(let r=1;r<=9;r++){const q=pos.b[f*10+r];if(q&&q.t==='P'&&!q.p&&q.s===side)nifu=true;}
+  for(let r=1;r<=9;r++){const rr=side===0?r:10-r;if(pos.b[f*10+r])continue;if((t==='P'||t==='L')&&rr===1)continue;if(t==='N'&&rr<=2)continue;if(nifu)continue;out.push(f*10+r);}}return out;}
+function targets(pos,from){const out=[];for(let f=1;f<=9;f++)for(let r=1;r<=9;r++)if(canReach(pos,from,f*10+r))out.push(f*10+r);return out;}
+function parseMove(m){
+  const [core,suf]=m.split('|');
+  if(core[1]==='*')return {drop:core[0],to:+core.slice(2,4),suf:suf||''};
+  return {from:+core.slice(0,2),to:+core.slice(2,4),prom:core.endsWith('+'),suf:suf||''};
+}
+function pieceName(pc){return pc.p?PROM[pc.t]:(pc.t==='K'&&pc.s===1?'王':KANJI[pc.t]);}
+function applyMove(pos,m,prevTo){
+  const mv=parseMove(m);const p=clonePos(pos);const side=p.turn;let name,err=null;
+  if(mv.drop){
+    if(!p.h[side][mv.drop])err='no piece in hand';
+    if(p.b[mv.to])err='occupied';
+    if(mv.drop==='P'){const f=Math.floor(mv.to/10);for(let r=1;r<=9;r++){const q=p.b[f*10+r];if(q&&q.t==='P'&&!q.p&&q.s===side)err='nifu';}}
+    p.h[side][mv.drop]--;if(!p.h[side][mv.drop])delete p.h[side][mv.drop];
+    p.b[mv.to]={t:mv.drop,s:side,p:false};name=KANJI[mv.drop];
+  }else{
+    const pc=p.b[mv.from];
+    if(!pc)err='no piece at '+mv.from;else if(pc.s!==side)err='wrong side';else if(!canReach(pos,mv.from,mv.to))err='illegal';
+    if(err)return {err};
+    name=pieceName(pc);
+    const cap=p.b[mv.to];if(cap){p.h[side][cap.t]=(p.h[side][cap.t]||0)+1;}
+    delete p.b[mv.from];p.b[mv.to]={...pc,p:pc.p||mv.prom};
+  }
+  if(err)return {err};
+  p.turn=1-side;
+  const f=Math.floor(mv.to/10),r=mv.to%10;
+  const sq=prevTo===mv.to?'同':FW[f]+RANKS[r];
+  const label=(side===0?'▲':'△')+sq+name+mv.suf+(mv.prom?'成':'');
+  return {pos:p,label,from:mv.from||null,to:mv.to,drop:!!mv.drop,dropT:mv.drop||null};
+}
+function buildLesson(L){
+  const states=[initPos()],labels=[],info=[];let prevTo=null;
+  for(const [m] of L.moves){
+    const res=applyMove(states[states.length-1],m,prevTo);
+    if(res.err)throw new Error(L.id+' move '+(labels.length+1)+' '+m+': '+res.err);
+    states.push(res.pos);labels.push(res.label);info.push(res);prevTo=res.to;
+  }
+  return {states,labels,info};
+}
+
+// ---- lessons ----
+const LESSONS=[
+{id:'bougin',name:'棒銀',group:'居飛車',level:'入門',
+ overview:'銀を2筋にまっすぐ進め、飛車と協力して突破する、いちばんシンプルな攻め。',
+ aims:['銀と飛車の2枚で、守りの金1枚を上回る「数の攻め」','2四の地点に攻め駒を集中させる'],
+ cautions:['相手に△1四歩や△3三銀と受けられると攻めが止まりやすい','攻めている間は玉が居玉のまま。止まった瞬間に反撃が痛い。仕掛ける前に玉を1〜2手囲っておく'],
+ moves:[
+ ['2726','飛車先の歩を突く。棒銀はまず2筋から。'],
+ ['8384',''],
+ ['2625','さらに伸ばして、2筋を攻める準備。'],
+ ['8485','相手も飛車先を伸ばしてきた。'],
+ ['6978','▲7八金で角の頭（8筋）を守る。攻める前の大事な一手。'],
+ ['4132','相手は△3二金で2筋の受けを用意。'],
+ ['3938','銀を上がる。ここから棒銀の旅が始まる。'],
+ ['7172',''],
+ ['3827','▲2七銀。飛車の真上に銀を重ねるのが棒銀の形。'],
+ ['6364',''],
+ ['2726','▲2六銀。さらに前進。'],
+ ['7263',''],
+ ['2615','▲1五銀。ここから2四の地点を狙う。'],
+ ['5354','相手は中央の歩を突いた。△3三銀などで2四を厚くしておくべきだった。'],
+ ['2524','▲2四歩！ 歩を捨てて2筋をこじ開ける。'],
+ ['2324','取るしかない。'],
+ ['1524','▲同銀。次に▲2三銀成を狙う。'],
+ ['P*23','△2三歩と打って受ける。'],
+ ['2423+','▲同銀成！ 銀を捨てる。'],
+ ['3223','△同金。'],
+ ['2823+','▲同飛成。攻め駒2枚（銀・飛）に対し守りは金1枚。数の差で突破して竜ができた。']]},
+{id:'hayakuri',name:'早繰り銀',group:'居飛車',level:'初級',
+ overview:'銀を3七→4六と繰り出し、3筋の歩を突き捨てて攻める。棒銀より中央寄りで攻め筋が多い。',
+ aims:['3筋と2筋の両方から攻められる','4六の銀は3五にも5五にも出られる'],
+ cautions:['銀が前に出る分、玉の周りが薄くなる','相手が3筋・2筋を厚く受けると攻めが細くなる。仕掛けの前に玉を囲っておくこと'],
+ moves:[
+ ['2726','飛車先を突く。'],
+ ['3334','相手は角道を開ける。'],
+ ['2625',''],
+ ['8384',''],
+ ['6978','角の頭を守る。'],
+ ['8485',''],
+ ['3938','銀を上がる。'],
+ ['4132',''],
+ ['3736','▲3六歩。早繰り銀は3筋の歩を突いて銀の通り道を作る。'],
+ ['7172',''],
+ ['3837','▲3七銀。'],
+ ['6364',''],
+ ['3746','▲4六銀。中央寄りの好位置。3五にも5五にも出られる。'],
+ ['7263',''],
+ ['3635','▲3五歩で仕掛け。'],
+ ['3435','△同歩。'],
+ ['4635','▲同銀。銀が相手陣にせまる。'],
+ ['5354','相手は受けを見送った。'],
+ ['2524','▲2四歩。銀と飛車を連動させて2筋も攻める。'],
+ ['2324','△同歩。'],
+ ['3524','▲同銀。2筋と3筋の両方から攻められるのが早繰り銀の強み。次は▲2三銀成が狙い。']]},
+{id:'nakabisha',name:'中飛車',group:'振り飛車',level:'初級',
+ overview:'飛車を5筋（中央）に振り、5筋の歩を伸ばして中央を制圧する。攻めの形が分かりやすい。',
+ aims:['▲5五歩の位を取って中央を押さえる','▲5四歩からの5筋突破','玉は片美濃で素早く囲える'],
+ cautions:['相手が5筋を厚く受けると飛車が働きにくい。その時は4筋・2筋に振り直す柔軟さが大事','角交換されやすい形。打ち込みのスキを作らない'],
+ moves:[
+ ['5756','▲5六歩。中飛車は5筋の歩から。'],
+ ['3334',''],
+ ['5655','▲5五歩。角道を自然に止めつつ、中央の位を取る。'],
+ ['8384',''],
+ ['2858','▲5八飛。飛車を中央へ振る。'],
+ ['8485',''],
+ ['7776','▲7六歩。角を使う準備。'],
+ ['7162',''],
+ ['8877','▲7七角。8筋の歩突きにも備える。'],
+ ['5142',''],
+ ['5948','玉を右へ。囲いを作り始める。'],
+ ['4232',''],
+ ['4838',''],
+ ['6152|右',''],
+ ['3828','▲2八玉。玉の定位置。'],
+ ['7374',''],
+ ['3938','▲3八銀。玉2八・銀3八・金4九で「片美濃囲い」の完成。'],
+ ['3142',''],
+ ['5554','▲5四歩！ 囲いができたら中央から仕掛ける。'],
+ ['5354','△同歩。'],
+ ['5854','▲同飛。飛車が5筋で大きく働き、相手の5二金をにらむ。']]},
+{id:'shiken',name:'四間飛車',group:'振り飛車',level:'初級',
+ overview:'角道を止め、飛車を6八に振る。美濃囲いでしっかり固めてから、相手の攻めを捌いて反撃する。',
+ aims:['美濃囲いで玉を固める（玉2八・銀3八・金4九・金5八）','相手が攻めてきたら6筋や角で捌いて反撃'],
+ cautions:['受けが中心なので、自分から動く手が少ない','相手が穴熊など固い囲いを組むと、固さ負けしやすい'],
+ moves:[
+ ['7776',''],
+ ['3334',''],
+ ['6766','▲6六歩。角道を止めるのが四間飛車の基本。'],
+ ['8384',''],
+ ['2868','▲6八飛。左から4筋目に振るので「四間飛車」。'],
+ ['8485',''],
+ ['8877','▲7七角。8筋の攻めに備える。'],
+ ['7162',''],
+ ['5948','玉を右側へ移動開始。'],
+ ['5142',''],
+ ['4838',''],
+ ['4232',''],
+ ['3828','▲2八玉。'],
+ ['6152|右',''],
+ ['3938','▲3八銀。'],
+ ['7374',''],
+ ['6958|左','▲5八金左。これで美濃囲いの骨組みが完成。'],
+ ['6364',''],
+ ['1716','▲1六歩。端歩を突いて玉の逃げ道を広げる。本美濃囲いの完成。']]},
+{id:'mukai',name:'向かい飛車',group:'振り飛車',level:'中級',
+ overview:'飛車を8筋に振り、相手の飛車と向かい合わせる。自分から飛車交換に持ち込みやすい。',
+ aims:['▲8六歩から飛車交換を狙う','手に入れた飛車を相手陣に打ち込む'],
+ cautions:['飛車交換すると相手も飛車を持つ。自陣に打ち込まれるスキがないか必ず確認','囲いを作ってから交換するのが鉄則'],
+ moves:[
+ ['7776',''],
+ ['3334',''],
+ ['6766','▲6六歩。角道を止める。'],
+ ['8384',''],
+ ['8877','▲7七角。飛車を8筋に回す通り道を空ける。'],
+ ['7162',''],
+ ['2888','▲8八飛。相手の飛車と向かい合う「向かい飛車」。'],
+ ['5142',''],
+ ['5948',''],
+ ['4232',''],
+ ['4838',''],
+ ['8485','相手も8筋の歩を伸ばしてきた。'],
+ ['3828','▲2八玉。'],
+ ['6152|右',''],
+ ['3938','▲3八銀。片美濃で玉を守ってから動く。'],
+ ['7374',''],
+ ['8786','▲8六歩！ 8筋でぶつける。'],
+ ['8586','△同歩。'],
+ ['8886','▲同飛。'],
+ ['8286','△同飛。'],
+ ['7786','▲同角。飛車交換が成立。お互い飛車を持ち駒にした。']]},
+{id:'yagura',name:'矢倉囲い',group:'囲い',level:'中級',
+ overview:'金銀3枚で玉を固める、居飛車の代表的な囲い。上からの攻めに強く、じっくりした将棋に向く。',
+ aims:['金矢倉の完成形：玉8八・銀7七・金7八・金6七','角は7九→6八と移動させて玉の通り道を空ける'],
+ cautions:['完成までに手数がかかる。相手の急戦（棒銀など）に注意','端や横からの攻めはやや弱い'],
+ moves:[
+ ['7776',''],
+ ['8384',''],
+ ['7968','▲6八銀。矢倉の第一歩。'],
+ ['3334',''],
+ ['6766','▲6六歩。角道を止めて、じっくり組む。'],
+ ['7162',''],
+ ['5756',''],
+ ['5354',''],
+ ['3948','右の銀も上がる。'],
+ ['3142',''],
+ ['4958|右','▲5八金右。'],
+ ['4132',''],
+ ['6978','▲7八金。'],
+ ['5141',''],
+ ['6877','▲7七銀。矢倉の銀の定位置。'],
+ ['4233',''],
+ ['5867|右','▲6七金右。金銀3枚の壁ができた。'],
+ ['6152',''],
+ ['8879','▲7九角。角をどかして玉の通り道を空ける。'],
+ ['7374',''],
+ ['5969','玉の移動開始。'],
+ ['2231',''],
+ ['7968','▲6八角。角が活きる位置へ。'],
+ ['4344',''],
+ ['6979',''],
+ ['8485',''],
+ ['7988','▲8八玉。金矢倉の完成！']]},
+{id:'aigakari',name:'相掛かり',group:'居飛車',level:'入門',
+ overview:'お互いに飛車先の歩を伸ばし合う、居飛車の基本。「飛車先の歩交換」の手順を覚える。',
+ aims:['飛車先の歩を交換して、持ち駒の歩を1枚得る','歩交換された後の受け（▲8七歩）を正しく指す'],
+ cautions:['相手にも歩交換をされる。▲8七歩を忘れると角を取られる','飛車を浮いたままにすると狙われやすい。交換後は▲2八飛と引くのが基本'],
+ moves:[
+ ['2726','飛車先を突く。'],
+ ['8384','相手も飛車先を突いてくる。相掛かりの出だし。'],
+ ['2625',''],
+ ['8485',''],
+ ['6978','▲7八金。角の頭を守る、相掛かりの必須手。'],
+ ['4132','相手も△3二金で守る。'],
+ ['2524','▲2四歩。飛車先の歩をぶつける。'],
+ ['2324','△同歩。'],
+ ['2824','▲同飛。これが「飛車先の歩交換」。歩を1枚手に入れた。'],
+ ['8586','相手も△8六歩と同じことをしてきた。'],
+ ['8786','▲同歩。'],
+ ['8286','△同飛。次に△8八飛成を狙っている。'],
+ ['P*87','▲8七歩。飛車を追い返しつつ、角を守る大事な一手。'],
+ ['P*23','相手も△2三歩で2二の角を守る。'],
+ ['2428','▲2八飛。飛車を定位置に引いて一段落。互角の形。']]},
+{id:'koshikake',name:'角換わり腰掛け銀',group:'居飛車',level:'中級',
+ overview:'序盤で角を交換し、右の銀を5六に「腰掛け」させる。プロでも主流の本格的な戦型。',
+ aims:['角交換後の陣形の作り方（▲8八銀〜▲7七銀）','5六の腰掛け銀から、4筋・3筋での仕掛けを狙う'],
+ cautions:['お互い角を持っているので、打ち込みのスキを作らない（陣形にすき間を作らない）','仕掛けのタイミングを間違えると、持ち駒の角で反撃される'],
+ moves:[
+ ['7776',''],
+ ['8384',''],
+ ['2726',''],
+ ['4132',''],
+ ['6978','▲7八金。'],
+ ['8485',''],
+ ['8877','▲7七角。8筋を受ける。'],
+ ['3334','相手は角道を開け、角交換を誘う。'],
+ ['7988','▲8八銀。角交換に備える。'],
+ ['2277+','△同角成。角交換。'],
+ ['8877','▲同銀。銀が7七に上がり、角の頭も守れる形。'],
+ ['3122',''],
+ ['3948','▲4八銀。右の銀を使い始める。'],
+ ['7162',''],
+ ['4746','▲4六歩。銀の通り道を作る。'],
+ ['6364',''],
+ ['4847','▲4七銀。'],
+ ['6263',''],
+ ['4756','▲5六銀。これが「腰掛け銀」。中央にどっしり座る。'],
+ ['6354','相手も△5四銀と腰掛け銀。相腰掛け銀の形。'],
+ ['2625','▲2五歩。飛車先を伸ばして相手の銀を3三に釘付けにする。'],
+ ['2233',''],
+ ['5968','▲6八玉。玉を囲いに入れる。'],
+ ['5142',''],
+ ['6879','▲7九玉。角換わりでよく使う、低く構えた囲いの完成。']]},
+{id:'ishida',name:'石田流',group:'振り飛車',level:'中級',
+ overview:'▲7五歩と突いて飛車を7筋に振る三間飛車の攻撃形。飛車・角・桂が連動して攻める。',
+ aims:['▲7六飛の浮き飛車で8筋も受けながら攻める','飛車7六・角9七・桂7七の「石田流本組み」を作る'],
+ cautions:['序盤に角交換されると、陣形のスキを突かれやすい','攻撃形を作るのに手数がかかる。囲いとのバランスが大事'],
+ moves:[
+ ['7776',''],
+ ['3334',''],
+ ['7675','▲7五歩。石田流の目印となる一手。'],
+ ['8384',''],
+ ['2878','▲7八飛。三間飛車に振る。'],
+ ['8485','相手は8筋を伸ばしてきた。'],
+ ['7876','▲7六飛。浮き飛車で8筋（8六）も横から守る。'],
+ ['7162',''],
+ ['5948','玉を囲いに向かわせる。'],
+ ['5142',''],
+ ['4838',''],
+ ['4232',''],
+ ['3828','▲2八玉。'],
+ ['6152|右',''],
+ ['3938','▲3八銀。片美濃囲い。'],
+ ['7374',''],
+ ['9796','▲9六歩。角の通り道を作る。'],
+ ['6364',''],
+ ['8897','▲9七角。角が遠くから相手陣をにらむ。'],
+ ['6263',''],
+ ['8977','▲7七桂。飛車・角・桂が連動する「石田流本組み」の完成。']]},
+{id:'anaguma',name:'居飛車穴熊',group:'囲い',level:'上級',
+ overview:'玉を隅の9九にもぐらせ、金銀でふたをする最強クラスの囲い。振り飛車相手によく使われる。',
+ aims:['玉9九・香9八・銀8八・金7九・金7八の形を覚える','固さを活かして、多少の駒損でも攻め合いに勝つ'],
+ cautions:['組むまでに手数がかかる。その間に急戦で攻められないよう注意','端（9筋）から攻められると逃げ場がない'],
+ moves:[
+ ['7776',''],
+ ['3334',''],
+ ['2726','居飛車の意思表示。'],
+ ['4344','相手は角道を止めた。振り飛車の構え。'],
+ ['3948','▲4八銀。'],
+ ['8242','相手は四間飛車に振った。'],
+ ['5968','▲6八玉。玉を左へ運ぶ。'],
+ ['5162',''],
+ ['6878','▲7八玉。ここで止めれば舟囲い。今回はさらに深く囲う。'],
+ ['6272',''],
+ ['4958|右',''],
+ ['7282',''],
+ ['8877','▲7七角。角をどかして玉の通り道を空ける。'],
+ ['7172',''],
+ ['7888','▲8八玉。'],
+ ['9394',''],
+ ['9998','▲9八香。玉が入る場所を空ける。'],
+ ['3132',''],
+ ['8899','▲9九玉。穴熊にもぐった。'],
+ ['5354',''],
+ ['7988','▲8八銀。ふたをする。'],
+ ['3243',''],
+ ['6979','▲7九金。'],
+ ['9495',''],
+ ['5868|寄','▲6八金寄。金を寄せていく。'],
+ ['6364',''],
+ ['6878|寄','▲7八金寄。金銀が連結した居飛車穴熊の完成！']]},
+{id:'ginkanmuri',name:'美濃から銀冠',group:'囲い',level:'中級',
+ overview:'振り飛車の美濃囲いを、高美濃・銀冠へと発展させる。上からの攻めにも強い囲いになる。',
+ aims:['本美濃 → 高美濃（▲4六歩・▲4七金）→ 銀冠（▲2七銀・▲3八金）の流れを覚える','囲いを発展させながら戦う「手順」を体に入れる'],
+ cautions:['囲いを発展させている間は攻めが遅れる。相手の動きを見て、どこまで組むか判断','銀冠は横からの攻めにはやや弱い'],
+ moves:[
+ ['7776',''],
+ ['3334',''],
+ ['6766','▲6六歩。角道を止める。'],
+ ['8384',''],
+ ['2868','▲6八飛。四間飛車。'],
+ ['8485',''],
+ ['8877',''],
+ ['7162',''],
+ ['5948',''],
+ ['5142',''],
+ ['4838',''],
+ ['4232',''],
+ ['3828','▲2八玉。'],
+ ['6152|右',''],
+ ['3938',''],
+ ['7374',''],
+ ['6958|左',''],
+ ['6364',''],
+ ['1716','▲1六歩。本美濃囲いの完成。'],
+ ['1314',''],
+ ['4746','▲4六歩。ここから囲いを発展させる。'],
+ ['5354',''],
+ ['5847','▲4七金。「高美濃囲い」。上からの攻めに強くなった。'],
+ ['9394',''],
+ ['2726','▲2六歩。銀の行き先を空ける。'],
+ ['9495',''],
+ ['3827','▲2七銀。銀が玉の頭を守る「冠」に。'],
+ ['4344',''],
+ ['4938','▲3八金。玉の上に銀がかぶさる「銀冠」の完成！']]}
+];
+if(typeof module!=='undefined')module.exports={LESSONS,buildLesson,targets,parseMove,initPos};
+
+// ---- variations ----
+const OLD=Object.fromEntries(LESSONS.map(l=>[l.id,l]));
+const C=(s)=>s; // marker
+const SHIKEN_HEAD=[['7776',''],['3334',''],['6766','▲6六歩。角道を止めるのが四間飛車の基本。'],['8384',''],['2868','▲6八飛。左から4筋目に振るので「四間飛車」。']];
+const KAKU_HEAD=OLD.koshikake.moves.slice(0,12);
+
+const STRATS=[
+{id:'aigakari',name:'相掛かり',group:'居飛車',level:'入門',overview:'お互いに飛車先の歩を伸ばし合う、居飛車の基本形。',
+ vars:[
+ {id:'aigakari-kihon',vs:'基本',name:'飛車先の歩交換',desc:'歩交換と、相手の交換への受けまで',from:'aigakari',
+  stages:[['飛車先を伸ばそう','▲2六歩〜▲2五歩。',3],['角の頭を守ろう','▲7八金で8筋からの攻めに備える。',5],['飛車先の歩を交換しよう','▲2四歩とぶつけて、飛車で取り返す。',9],['相手の歩交換を受けよう','▲同歩と取り、▲8七歩で角を守る。',13],['飛車を定位置に戻そう','▲2八飛と引いて一段落。',15]]},
+ {id:'yokofu',vs:'対 相居飛車',name:'横歩取り',desc:'飛車で3四の歩を取る「横歩取り」の入口まで',level:'中級',
+  overview:'飛車先の歩を交換したあと、飛車を横に動かして3四の歩まで取る積極的な戦型。',
+  aims:['歩を2枚得して、序盤からリードする','▲3六飛と引いて飛車の安全を確保する'],
+  cautions:['飛車が相手陣の近くで動くので、角や銀で狙われやすい','歩得の代わりに手損しているので、相手の速い攻めに注意'],
+  moves:[['7776',''],['3334','相手も角道を開ける。'],['2726',''],['8384',''],['2625',''],['8485',''],['6978','▲7八金。角の頭を守る。'],['4132',''],
+   ['2524','▲2四歩。飛車先の歩をぶつける。'],['2324','△同歩。'],['2824','▲同飛。歩交換。'],['P*23','△2三歩。2二の角を守る。'],
+   ['2434','▲3四飛！ 横にある歩（横歩）を取る。これで歩を2枚得した。'],['2233','△3三角。飛車の利きを止め、角の頭を守る。'],['3436','▲3六飛。飛車を安全な位置に引く。横歩取りの基本形。']],
+  stages:[['角道と飛車先を開けよう','▲7六歩・▲2六歩・▲2五歩。',5],['角の頭を守ろう','▲7八金。',7],['飛車先の歩を交換しよう','▲2四歩〜▲同飛。',11],['横歩を取ろう','▲3四飛で歩を取り、▲3六飛と引く。',15]]}
+ ]},
+{id:'bougin',name:'棒銀',group:'居飛車',level:'入門',overview:'銀を2筋にまっすぐ進め、飛車と協力して突破するシンプルな攻め。',
+ vars:[
+ {id:'bougin-kihon',vs:'基本',name:'原始棒銀',desc:'銀を1五へ進め、2筋を突破するまで',from:'bougin',
+  stages:[['飛車先の歩を伸ばそう','▲2六歩〜▲2五歩と、飛車先の歩を2五まで進める。',3],['角の頭を守ろう','攻める前に▲7八金。8筋からの反撃に備える。',5],['銀を2六まで進めよう','▲3八銀→▲2七銀→▲2六銀。飛車の真上に銀を重ねる。',11],['▲1五銀で2四を狙おう','銀を端に出して、2四の地点に照準を合わせる。',13],['2筋を突破して竜を作ろう','歩を捨てて2筋を開け、銀と飛車の2枚で突破する。',21]]},
+ {id:'bougin-hashi',vs:'対 端歩の受け',name:'端攻め型',desc:'△1四歩と受けられたら、端を破るまで',level:'初級',
+  overview:'相手が△1四歩と突いて銀の1五進出を防いできた形。端歩を突き返して、銀と香で1筋を破る。',
+  aims:['▲1六歩〜▲1五歩で端をこじ開ける','銀を捨ててでも香を1五に進出させ、1筋を制圧する'],
+  cautions:['銀と香の交換で駒の損得はやや損。攻めを続けられるときに使う','端を破ったあとも、玉の守りが薄いことを忘れない'],
+  moves:[['2726','飛車先を突く。'],['8384',''],['2625',''],['8485',''],['6978','▲7八金。'],['4132',''],['3938','銀を上がる。'],
+   ['1314','相手は△1四歩。銀が1五に出られないようにしてきた。'],['1716','▲1六歩。端歩を突き返して、端攻めの準備。'],['7172',''],
+   ['3827','▲2七銀。'],['6364',''],['2726','▲2六銀。'],['7263',''],
+   ['1615','▲1五歩！ 端でぶつける。'],['1415','△同歩。'],['2615','▲同銀。'],['1115','△同香。銀を取られた。'],['1915','▲同香。香が1五に進出し、1筋の主導権を握った。次は▲1三香成などを狙う。']],
+  stages:[['飛車先を伸ばし角頭を守ろう','▲2六歩・▲2五歩・▲7八金。',5],['銀を上がって端歩を突き返そう','▲3八銀・▲1六歩。',9],['銀を2六へ進めよう','▲2七銀〜▲2六銀。',13],['端を破ろう','▲1五歩から銀・香で1筋を攻める。',19]]}
+ ]},
+{id:'hayakuri',name:'早繰り銀',group:'居飛車',level:'初級',overview:'銀を3七→4六と繰り出し、3筋から攻める。棒銀より中央寄りで攻め筋が多い。',
+ vars:[
+ {id:'hayakuri-kihon',vs:'対 角道を開けた形',name:'3筋からの仕掛け',desc:'銀を4六へ繰り出し、3筋・2筋を攻めるまで',from:'hayakuri',
+  stages:[['飛車先を伸ばして角頭を守ろう','▲2六歩・▲2五歩・▲7八金で攻めの土台を作る。',5],['銀の通り道を作ろう','▲3八銀と上がり、▲3六歩で3七を空ける。',9],['銀を4六へ繰り出そう','▲3七銀→▲4六銀。中央寄りの好位置へ。',13],['3筋から仕掛けよう','▲3五歩を突き捨て、銀で取り返して前進する。',17],['2筋も攻めて銀を進めよう','▲2四歩から銀を2四へ。2筋と3筋の両方から攻める。',21]]},
+ {id:'hayakuri-kaku',vs:'対 角換わり',name:'角換わり早繰り銀',desc:'角交換のあと、銀を繰り出して3筋で仕掛けるまで',level:'中級',
+  overview:'角を交換したあと、右の銀を3七→4六と素早く繰り出して3筋から攻める。角換わりの中でも攻撃的な作戦。',
+  aims:['角交換後すぐに銀を前線へ出す','▲3五歩の突き捨てから銀で3筋を突破する'],
+  cautions:['お互い角を持っているので、仕掛けた後の角打ちに注意','相手の腰掛け銀（5四銀）に4五を押さえられないよう、早めに動く'],
+  moves:KAKU_HEAD.concat([['3736','▲3六歩。早繰り銀の準備。'],['7162',''],['3938','▲3八銀。'],['6364',''],['3837','▲3七銀。'],['6263',''],
+   ['3746','▲4六銀。'],['6354','相手は腰掛け銀で4五を守る。'],['3635','▲3五歩！ 仕掛け。'],['3435','△同歩。'],['4635','▲同銀。銀が前線に出た。次は▲2四歩や▲3四歩で攻める。']]),
+  stages:[['序盤の駒組み','▲7六歩・▲2六歩・▲7八金。',5],['角交換に備えよう','▲7七角〜▲8八銀。',9],['角を交換しよう','△同角成には▲同銀。',11],['銀の道を作ろう','▲3六歩・▲3八銀。',15],['銀を4六へ繰り出そう','▲3七銀〜▲4六銀。',19],['3筋から仕掛けよう','▲3五歩〜▲同銀。',23]]}
+ ]},
+{id:'kakugawari',name:'角換わり',group:'居飛車',level:'中級',overview:'序盤で角を交換する本格派の戦型。銀の使い方で作戦が分かれる。',
+ vars:[
+ {id:'koshikake',vs:'対 腰掛け銀',name:'相腰掛け銀',desc:'お互いに銀を5筋に腰掛け、玉を囲うまで',from:'koshikake',
+  stages:[['序盤の駒組み','▲7六歩・▲2六歩・▲7八金。',5],['角交換に備えよう','▲7七角〜▲8八銀。',9],['角を交換しよう','△同角成には▲同銀と銀で取り返す。',11],['右の銀を進めよう','▲4八銀・▲4六歩・▲4七銀。',17],['腰掛け銀を作ろう','▲5六銀で中央に座り、▲2五歩で相手の銀を縛る。',21],['玉を囲おう','▲6八玉〜▲7九玉。',25]]},
+ {id:'kaku-bougin',vs:'対 3三銀型',name:'角換わり棒銀',desc:'棒銀で2筋の銀交換に持ち込み、飛車を走るまで',level:'中級',
+  overview:'角交換のあと、右の銀を棒銀で2筋に進める。銀交換に持ち込んで、飛車の成り込みを狙う分かりやすい攻め。',
+  aims:['銀1五から2四の地点に攻め駒を集中','銀を交換して▲2四飛、次に▲2一飛成を狙う'],
+  cautions:['相手は持ち駒の角を打ってくる。飛車や玉の位置に注意','銀交換後は相手にも銀を渡す。自陣のスキを確認'],
+  moves:KAKU_HEAD.concat([['2625','▲2五歩。相手の銀を3三に上がらせる。'],['2233',''],['3938','▲3八銀。'],['7162',''],['3827','▲2七銀。'],['6364',''],['2726','▲2六銀。'],['6263',''],
+   ['2615','▲1五銀。棒銀の形。'],['6354',''],['2524','▲2四歩！'],['2324','△同歩。'],['1524','▲同銀。'],['3324','△同銀。'],['2824','▲同飛。銀交換が成立。次に▲2一飛成を狙う。']]),
+  stages:[['序盤の駒組み','▲7六歩・▲2六歩・▲7八金。',5],['角交換に備えよう','▲7七角〜▲8八銀。',9],['角を交換しよう','△同角成には▲同銀。',11],['銀を2六へ進めよう','▲2五歩・▲3八銀・▲2七銀・▲2六銀。',19],['▲1五銀で構えよう','棒銀の形を作る。',21],['2筋で銀交換しよう','▲2四歩〜▲同飛。',27]]}
+ ]},
+{id:'shiken',name:'四間飛車',group:'振り飛車',level:'初級',overview:'角道を止めて飛車を6八に振る。美濃囲いで固めてから、相手の攻めを捌いて反撃する。',
+ vars:[
+ {id:'shiken-kihon',vs:'基本',name:'美濃囲いの基本',desc:'四間飛車に振り、本美濃を完成させるまで',from:'shiken',
+  stages:[['角道を止めて飛車を振ろう','▲7六歩・▲6六歩・▲6八飛。',5],['角の頭を守ろう','▲7七角で8筋の攻めに備える。',7],['玉を2八へ運ぼう','▲4八玉→▲3八玉→▲2八玉。',13],['美濃囲いを完成させよう','▲3八銀・▲5八金左・▲1六歩で本美濃。',19]]},
+ {id:'shiken-bougin',vs:'対 居飛車急戦',name:'対 棒銀',desc:'端歩と6七銀で備え、棒銀の仕掛けを受け止めるまで',level:'中級',
+  overview:'相手が舟囲いから棒銀で攻めてくる形。端歩と6七銀で備え、仕掛けてきた銀を歩で追い返す。',
+  aims:['▲9六歩で銀の9五進出を先に防ぐ','▲6七銀で6筋・7筋を厚くする','前に出てきた銀に歩を打って追い返す'],
+  cautions:['受けが遅れると、角の頭（7七・8六）を突破される','追い返したあとは、反撃に転じるタイミングを逃さない'],
+  moves:SHIKEN_HEAD.concat([['5142',''],['5948','玉を右へ。'],['4232',''],['4838',''],['6152|右','相手は舟囲い。急戦の構え。'],['3828','▲2八玉。'],
+   ['8485','8筋を伸ばして角の頭を狙ってきた。'],['8877','▲7七角で受ける。'],['7172','相手は左の銀を上がった。棒銀の準備。'],['3938','▲3八銀。片美濃。'],
+   ['7283','△8三銀。棒銀だ。'],['9796','▲9六歩！ 銀が9五に出てくるのを先に防ぐ。'],['8384','△8四銀。'],['6958|左','▲5八金左。本美濃。'],['5354',''],
+   ['7978','左の銀を上がる。'],['7374','△7四歩。7筋から銀を進める準備。'],['7867','▲6七銀。6筋・7筋を受ける好位置。'],
+   ['7475','△7五歩。仕掛けてきた。'],['7675','▲同歩。'],['8475','△同銀。銀が前に出てきた。'],['P*76','▲7六歩！ 歩を打って銀を追い返す。7五の銀には支えの駒がない。']]),
+  stages:[['四間飛車に組み、玉を2八へ','▲6八飛のあと、玉を2八まで運ぶ。',11],['角頭を守り、端歩で備えよう','▲7七角・▲3八銀・▲9六歩。',17],['銀を6七へ上がろう','▲5八金左・▲7八銀・▲6七銀。',23],['仕掛けを受け止めよう','▲同歩、そして▲7六歩で銀を追い返す。',27]]},
+ {id:'shiken-migi',vs:'対 右四間飛車',name:'6筋の受け',desc:'6七銀で備え、△6五歩の仕掛けを歩で受けるまで',level:'中級',
+  overview:'相手が飛車を6二に振り、6筋に攻め駒を集中させてくる「右四間飛車」。6筋の守りの数を意識して受ける。',
+  aims:['▲6七銀・▲5八金で6筋を厚くする','仕掛けには▲6六歩と打ち、攻め駒と守り駒の数を合わせる'],
+  cautions:['右四間は破壊力が高い。6筋の受けを1枚でも減らすと突破される','角が7七にいると狙われやすい。8八のままでも6六に利いていることを覚えておく'],
+  moves:[['7776',''],['3334',''],['6766','▲6六歩。角道を止める。'],['6364','相手は6筋の歩を突いた。'],['2868','▲6八飛。'],
+   ['8262','△6二飛。右四間飛車。6筋に攻めを集中してくる。'],['5948',''],['7172',''],['4838',''],['7263',''],['3828','▲2八玉。'],['6354','△5四銀。攻めの銀が前に出てきた。'],
+   ['3938','▲3八銀。片美濃。'],['5142',''],['7978','左の銀を上がる。'],['7374',''],['7867','▲6七銀。6筋をしっかり守る。'],['8173','△7三桂。攻めの駒がそろった。'],
+   ['6958|左','▲5八金左。本美濃で守りも完成。'],['6465','△6五歩。いよいよ仕掛け。'],['6665','▲同歩。'],['5465','△同銀。'],
+   ['P*66','▲6六歩！ 銀の前に歩を打って受ける。6六には銀と角が利いていて、数で負けない。']],
+  stages:[['角道を止めて飛車を振ろう','▲7六歩・▲6六歩・▲6八飛。',5],['玉を囲おう','玉を2八へ運び、▲3八銀。',13],['6筋に備えよう','▲7八銀・▲6七銀・▲5八金左。',19],['仕掛けを受け止めよう','▲同歩、そして▲6六歩。',23]]},
+ {id:'shiken-ana',vs:'対 居飛車穴熊',name:'▲6五歩で先攻',desc:'高美濃に組み、穴熊の完成前に角を働かせるまで',level:'中級',
+  overview:'相手が居飛車穴熊にもぐる形。固さで負けないよう高美濃に組み、▲6五歩で角道を開けて先に動く。',
+  aims:['高美濃で上からの攻めに備える','▲6五歩で角を働かせ、主導権を握る'],
+  cautions:['穴熊が完成するとこちらの攻めが届きにくい。のんびりしすぎない','角交換になったら、自陣の角の打ち込みのスキに注意'],
+  moves:SHIKEN_HEAD.concat([['5142',''],['5948',''],['4232',''],['4838',''],['8485',''],['8877','▲7七角。'],
+   ['2233','△3三角。玉の通り道を空けた。穴熊を目指している。'],['3828','▲2八玉。'],['3222',''],['3938',''],['1112','△1二香。穴熊は確定。'],['6958|左',''],['2211','△1一玉。'],['1716','▲1六歩。本美濃。'],
+   ['3122',''],['4746','▲4六歩。高美濃へ発展させる。'],['4131',''],['5847','▲4七金。高美濃の完成。'],['6152',''],
+   ['6665','▲6五歩！ 角道を開けて角交換を挑む。穴熊が完成する前に動いて主導権を握る。']]),
+  stages:[['角道を止めて飛車を振ろう','▲7六歩・▲6六歩・▲6八飛。',5],['玉を囲い角頭を守ろう','▲4八玉・▲3八玉・▲7七角・▲2八玉。',13],['本美濃を作ろう','▲3八銀・▲5八金左・▲1六歩。',19],['高美濃に発展させよう','▲4六歩〜▲4七金。',23],['▲6五歩で先に動こう','角道を開けて主導権を握る。',25]]},
+ {id:'shiken-ginkan',vs:'対 居飛車持久戦',name:'銀冠に組む',desc:'本美濃→高美濃→銀冠と囲いを発展させるまで',level:'中級',from:'ginkanmuri',
+  stages:[['四間飛車に振ろう','▲7六歩・▲6六歩・▲6八飛。',5],['玉を2八へ運ぼう','▲7七角のあと、玉を4八→3八→2八。',13],['本美濃を作ろう','▲3八銀・▲5八金左・▲1六歩。',19],['高美濃に発展させよう','▲4六歩〜▲4七金。',23],['銀冠を完成させよう','▲2六歩・▲2七銀・▲3八金。',29]]},
+ {id:'shiken-furiana',vs:'対 居飛車持久戦',name:'振り飛車穴熊',desc:'四間飛車のまま、玉を1九にもぐらせるまで',level:'上級',
+  overview:'振り飛車のまま玉を隅の1九にもぐらせる。居飛車穴熊と固さで対等に戦える。',
+  aims:['香1八・玉1九・銀2八・金3九・金3八の形を覚える','固さを活かして、駒の損得より攻め合いで勝つ'],
+  cautions:['組むまでに手数がかかる。相手の急戦には間に合わないことも','端（1筋）から攻められると逃げ場がない'],
+  moves:SHIKEN_HEAD.concat([['8485',''],['8877','▲7七角。'],['5142',''],['5948',''],['4232',''],['4838',''],['6152|右',''],['3828','▲2八玉。'],['5354',''],
+   ['1918','▲1八香。玉の入る場所を空ける。'],['7374',''],['2819','▲1九玉。穴熊にもぐった。'],['6364',''],['3928','▲2八銀。ふたをする。'],['8173',''],
+   ['4939','▲3九金。'],['7162',''],['6958','▲5八金。左の金も寄せていく。'],['6253',''],['5848|寄','▲4八金寄。'],['4344',''],['4838|寄','▲3八金寄。金銀4枚がくっついた振り飛車穴熊の完成！']]),
+  stages:[['飛車を振り、角頭を守ろう','▲7六歩・▲6六歩・▲6八飛・▲7七角。',7],['玉を2八へ運ぼう','▲4八玉→▲3八玉→▲2八玉。',13],['穴熊にもぐろう','▲1八香・▲1九玉・▲2八銀。',19],['金をくっつけよう','▲3九金・▲5八金・▲4八金寄・▲3八金寄。',27]]}
+ ]},
+{id:'nakabisha',name:'中飛車',group:'振り飛車',level:'初級',overview:'飛車を5筋に振り、中央を制圧する。攻めの形が分かりやすい。',
+ vars:[
+ {id:'naka-kihon',vs:'基本',name:'5筋の歩交換',desc:'片美濃に囲い、5筋から仕掛けるまで',from:'nakabisha',
+  stages:[['5筋の位を取ろう','▲5六歩〜▲5五歩で中央を押さえる。',3],['飛車を中央へ振ろう','▲5八飛。中飛車の基本形。',5],['角を使えるようにしよう','▲7六歩〜▲7七角。8筋の攻めにも備える。',9],['片美濃囲いを作ろう','玉を2八まで運び、▲3八銀で片美濃の完成。',17],['5筋から仕掛けよう','▲5四歩を突き、飛車で取り返して中央を制圧する。',21]]},
+ {id:'naka-gin',vs:'対 居飛車持久戦',name:'銀の繰り出し',desc:'左の銀を4五まで進め、銀で5筋に拠点を作るまで',level:'中級',
+  overview:'左の銀を5七→5六→4五と中央に繰り出し、5筋の歩交換を銀で行う。飛車と銀で中央を押さえる力強い指し方。',
+  aims:['5五の歩を銀で支える','▲5四歩△同歩▲同銀で、相手陣に銀の拠点を作る'],
+  cautions:['銀が前に出る分、玉の周りは薄くなる','△4四歩と突かれると4五の銀が狙われる。相手の歩の動きに注意'],
+  moves:[['5756','▲5六歩。'],['3334',''],['5655','▲5五歩。中央の位を取る。'],['8384',''],['2858','▲5八飛。'],['8485',''],['7776',''],['7162',''],['8877','▲7七角。'],
+   ['5142',''],['5948',''],['4232',''],['4838',''],['6152|右',''],['3828','▲2八玉。'],['7374',''],['3938','▲3八銀。片美濃。'],['6364',''],
+   ['7968','▲6八銀。左の銀を中央へ。'],['3142',''],['6857','▲5七銀。'],['1314',''],['5756','▲5六銀。5五の歩を支える。'],['9394',''],
+   ['5645','▲4五銀。さらに前進。'],['9495',''],['5554','▲5四歩。仕掛け。'],['5354','△同歩。'],['4554','▲同銀。銀が相手陣に拠点を作った。']],
+  stages:[['5筋の位を取り飛車を振ろう','▲5六歩・▲5五歩・▲5八飛。',5],['角を使えるようにしよう','▲7六歩〜▲7七角。',9],['片美濃囲いを作ろう','玉を2八へ運び、▲3八銀。',17],['銀を4五へ繰り出そう','▲6八銀・▲5七銀・▲5六銀・▲4五銀。',25],['銀で5筋に拠点を作ろう','▲5四歩〜▲同銀。',29]]}
+ ]},
+{id:'ishida',name:'石田流',group:'振り飛車',level:'中級',overview:'▲7五歩と突いて飛車を7筋に振る三間飛車の攻撃形。',
+ vars:[
+ {id:'ishida-hongumi',vs:'対 居飛車持久戦',name:'石田流本組み',desc:'浮き飛車・9七角・7七桂の本組みを作るまで',from:'ishida',
+  stages:[['石田流の構え','▲7六歩〜▲7五歩。7筋の歩を伸ばす。',3],['飛車を7筋へ振ろう','▲7八飛。三間飛車。',5],['浮き飛車で8筋を受けよう','▲7六飛。横から8六を守る。',7],['片美濃で玉を守ろう','玉を2八へ運び、▲3八銀。',15],['石田流本組みを完成させよう','▲9六歩・▲9七角・▲7七桂。',21]]},
+ {id:'ishida-haya',vs:'対 居飛車急戦',name:'早石田の歩交換',desc:'序盤から▲7四歩で7筋の歩を交換するまで',level:'初級',
+  overview:'囲いを後回しにして、序盤から▲7四歩と7筋の歩を交換する速攻。歩を1枚得して浮き飛車に構える。',
+  aims:['7筋の歩交換で歩を1枚得する','▲7六飛の浮き飛車で攻守のバランスを取る'],
+  cautions:['角道が開いているので、いつでも角交換される可能性がある','玉が薄いまま戦いになるので、交換後は早めに囲う'],
+  moves:[['7776',''],['3334',''],['7675','▲7五歩。石田流の目印。'],['7162',''],['2878','▲7八飛。'],['5142',''],['5948','▲4八玉。最低限の守り。'],['4232',''],
+   ['7574','▲7四歩！ 7筋で歩をぶつける。'],['7374','△同歩。'],['7874','▲同飛。7筋の歩交換。'],['P*73','△7三歩。飛車を追い返す。'],['7476','▲7六飛。歩を1枚得して浮き飛車に戻る。']],
+  stages:[['7筋の歩を伸ばそう','▲7六歩〜▲7五歩。',3],['飛車を振って玉を1つ囲おう','▲7八飛・▲4八玉。',7],['7筋で歩交換しよう','▲7四歩〜▲同飛、そして▲7六飛。',13]]}
+ ]},
+{id:'mukai',name:'向かい飛車',group:'振り飛車',level:'中級',overview:'飛車を8筋に振り、相手の飛車と向かい合わせる。',
+ vars:[
+ {id:'mukai-kihon',vs:'対 居飛車',name:'飛車交換',desc:'片美濃に囲い、8筋で飛車交換するまで',from:'mukai',
+  stages:[['角道を止めよう','▲7六歩・▲6六歩でじっくり組む。',3],['角を7七へ上がろう','飛車を8筋に回すための通り道を空ける。',5],['飛車を8八へ振ろう','相手の飛車と向かい合う。',7],['片美濃で玉を守ろう','玉を2八へ運び、▲3八銀。交換の前に囲う。',15],['飛車交換に持ち込もう','▲8六歩から8筋でぶつけ、飛車を持ち駒にする。',21]]}
+ ]},
+{id:'yagura',name:'矢倉',group:'囲い',level:'中級',overview:'金銀3枚で玉を固める、居飛車の代表的な囲い。',
+ vars:[
+ {id:'yagura-kin',vs:'対 相居飛車',name:'金矢倉',desc:'金銀3枚の矢倉を完成させるまで',from:'yagura',
+  stages:[['矢倉の第一歩','▲7六歩・▲6八銀・▲6六歩で角道を止める。',5],['右の駒も整えよう','▲5六歩・▲4八銀・▲5八金右。',11],['金銀3枚の壁を作ろう','▲7八金・▲7七銀・▲6七金右。',17],['角を移して玉の道を空けよう','▲7九角・▲6九玉・▲6八角。',23],['矢倉を完成させよう','玉を7九→8八へ。金矢倉の完成。',27]]}
+ ]},
+{id:'anaguma',name:'居飛車穴熊',group:'囲い',level:'上級',overview:'玉を9九にもぐらせ、金銀でふたをする最強クラスの囲い。',
+ vars:[
+ {id:'anaguma-shiken',vs:'対 四間飛車',name:'基本の穴熊',desc:'舟囲いから穴熊にもぐり、金銀を連結するまで',from:'anaguma',
+  stages:[['居飛車の構え','▲7六歩・▲2六歩。',3],['舟囲いを作ろう','▲4八銀・▲6八玉・▲7八玉・▲5八金右。',11],['玉の通り道を空けよう','▲7七角で角をどかし、▲8八玉。',15],['穴熊にもぐろう','▲9八香〜▲9九玉。',19],['金銀でふたをしよう','▲8八銀・▲7九金・▲6八金寄・▲7八金寄。',27]]}
+ ]}
+];
+// resolve variations into lessons
+const VARS={};
+STRATS.forEach(S=>S.vars.forEach(v=>{
+  const base=v.from?OLD[v.from]:{};
+  const L={...base,...v,id:v.id,strat:S.id,level:v.level||base.level||S.level,
+    overview:v.overview||base.overview,aims:v.aims||base.aims,cautions:v.cautions||base.cautions,moves:v.moves||base.moves};
+  VARS[v.id]=L;
+}));
+
+(function(){
+const app=document.getElementById('app');
+const $=id=>document.getElementById(id);
+const built={};for(const id in VARS)built[id]=buildLesson(VARS[id]);
+const stratOf=id=>STRATS.find(s=>s.id===id);
+function missions(vid){
+  let start=0;const out=VARS[vid].stages.map(([title,goal,end])=>{const m={title,goal,start,end};start=end;return m;});
+  out.push({title:'通しでノーミスクリア',goal:'最初から最後まで、ヒントなし・ミスなしで指し切ろう。',start:0,end:built[vid].info.length,final:true});
+  return out;
+}
+let prog={};try{prog=JSON.parse(localStorage.getItem('senpo-q2')||'{}')||{};}catch(e){}
+const save=()=>{try{localStorage.setItem('senpo-q2',JSON.stringify(prog));}catch(e){}};
+const doneOf=id=>prog[id]||(prog[id]=[]);
+const doneCount=id=>missions(id).filter((_,i)=>doneOf(id)[i]).length;
+const stratProg=S=>S.vars.reduce((a,v)=>[a[0]+doneCount(v.id),a[1]+missions(v.id).length],[0,0]);
+
+let cur=null,mi=0,phase='intro',idx=0,sel=null,hint=false,miss=0,hintUsed=false,busy=false,timer=null,fb='',fbc='',justCleared=false;
+const clearTimer=()=>{if(timer){clearTimeout(timer);timer=null;}busy=false;};
+
+/* ---------- home ---------- */
+function renderHome(){
+  clearTimer();cur=null;
+  let got=0,total=0;STRATS.forEach(S=>{const [a,b]=stratProg(S);got+=a;total+=b;});
+  const nv=STRATS.reduce((a,S)=>a+S.vars.length,0);
+  const groups=[...new Set(STRATS.map(S=>S.group))];
+  app.innerHTML=`<div class="screen">
+    <div class="hero"><h1>将棋戦法ドリル</h1><p>戦法を選び、相手の作戦ごとのバリエーションを選ぶ。ミッションを順番にクリアして手順を身につけよう。（全${nv}パターン）</p></div>
+    <div class="total"><span>全ミッション ${got} / ${total}</span><div class="bar"><i style="width:${total?got/total*100:0}%"></i></div></div>
+    ${groups.map(g=>`<section class="group"><h2>${g}</h2><div class="cards">${STRATS.filter(S=>S.group===g).map(S=>{
+      const [d,n]=stratProg(S);
+      return `<button class="card${d===n?' clear':''}" data-id="${S.id}">
+        <div class="top"><h3>${S.name}</h3><span class="lv">${S.vars.length}パターン</span></div>
+        <p>${S.overview}</p>
+        <div class="prog"><div class="bar"><i style="width:${d/n*100}%"></i></div><span>${d===n?'<span class="badge">✓ 制覇</span>':d+' / '+n}</span></div>
+      </button>`;}).join('')}</div></section>`).join('')}
+  </div>`;
+  app.querySelectorAll('.card').forEach(b=>b.onclick=()=>openStrat(b.dataset.id));
+  window.scrollTo(0,0);
+}
+
+/* ---------- strategy (variations) ---------- */
+function openStrat(sid){
+  clearTimer();cur=null;const S=stratOf(sid);
+  const groups=[...new Set(S.vars.map(v=>v.vs))];
+  app.innerHTML=`<div class="screen">
+    <div class="shead"><div class="row"><button class="btn ghost" id="back">← 戦法一覧</button></div>
+      <div class="row"><h1>${S.name}</h1><span class="lv">${S.group}</span></div>
+      <p>${S.overview} 相手の作戦を選んで練習しよう。</p></div>
+    ${groups.map(g=>{const vs=S.vars.filter(v=>v.vs===g);return `<section class="vgroup"><h2>${g==='基本'?'まずはここから':g}<small>全${vs.length}パターン</small></h2>
+      ${vs.map(v=>{const L=VARS[v.id],n=missions(v.id).length,d=doneCount(v.id);
+        return `<button class="vrow${d===n?' clear':d?' part':''}" data-id="${v.id}"><span class="stripe"></span>
+          <span><b>${L.name}</b><span class="d">${L.desc}</span></span>
+          <span class="st"><span class="lv">${L.level}</span><span>${d===n?'<span class="badge">✓ クリア</span>':d+' / '+n}</span></span></button>`;}).join('')}
+    </section>`;}).join('')}
+  </div>`;
+  $('back').onclick=renderHome;
+  app.querySelectorAll('.vrow').forEach(b=>b.onclick=()=>openLesson(b.dataset.id));
+  window.scrollTo(0,0);
+}
+
+/* ---------- lesson ---------- */
+function openLesson(id){
+  cur=id;const ms=missions(id),d=doneOf(id);
+  mi=ms.findIndex((_,i)=>!d[i]);if(mi<0)mi=ms.length-1;
+  buildLessonScreen();setupMission();window.scrollTo(0,0);
+}
+function buildLessonScreen(){
+  const L=VARS[cur],S=stratOf(L.strat);
+  app.innerHTML=`<div class="screen">
+    <div class="lhead"><button class="btn ghost" id="back">← ${S.name}</button><h1>${L.name}</h1><span class="sub">${L.vs}・${L.level}</span></div>
+    <section class="quest" aria-label="クエスト"><div class="steps" id="steps"></div><div class="mission" id="mission"></div></section>
+    <div class="main">
+      <div class="boardcol">
+        <div class="stand gote" id="hand1"></div>
+        <div class="boardframe">
+          <div class="files" aria-hidden="true"><span>9</span><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
+          <div class="board" id="board" aria-label="将棋盤"></div>
+          <div class="ranks" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>七</span><span>八</span><span>九</span></div>
+        </div>
+        <div class="stand" id="hand0"></div>
+      </div>
+      <div class="side">
+        <div class="movebox">
+          <div class="moverow"><span class="mv" id="mv"></span><span class="count" id="count"></span></div>
+          <div class="fb" id="fb" aria-live="polite"></div>
+          <p class="comment" id="comment"></p>
+        </div>
+        <div class="kifu" id="kifu"></div>
+        <p class="mgoal">${L.overview}</p>
+        <div class="notes">
+          <div><h3>狙い</h3><ul>${L.aims.map(a=>`<li>${a}</li>`).join('')}</ul></div>
+          <div class="warn"><h3>弱点と注意点</h3><ul>${L.cautions.map(a=>`<li>${a}</li>`).join('')}</ul></div>
+        </div>
+      </div>
+    </div></div>`;
+  $('back').onclick=()=>openStrat(L.strat);
+}
+function setupMission(){
+  clearTimer();const m=missions(cur)[mi];
+  phase='intro';idx=m.start;sel=null;hint=false;miss=0;hintUsed=false;justCleared=false;fb='';fbc='';render();
+}
+function startPlay(){
+  clearTimer();const m=missions(cur)[mi];
+  phase='play';idx=m.start;sel=null;hint=false;miss=0;hintUsed=false;
+  fb=m.final?'ミスなしで最後まで指そう。':'あなたの番。先手の駒をタップしよう。';fbc='';
+  render();autoGote();
+}
+function autoGote(){
+  const B=built[cur],m=missions(cur)[mi];
+  if(phase==='play'&&idx<m.end&&B.states[idx].turn===1){busy=true;timer=setTimeout(()=>{timer=null;busy=false;idx++;render();},650);}
+}
+function playDemo(){
+  clearTimer();const m=missions(cur)[mi];phase='demo';idx=m.start;fb='お手本を再生中…';fbc='';render();
+  const step=()=>{
+    if(idx<m.end){idx++;render();timer=setTimeout(step,1200);}
+    else timer=setTimeout(()=>{timer=null;phase='intro';idx=m.start;fb='お手本は以上。次は自分で指してみよう。';fbc='ok';render();},1400);
+  };
+  timer=setTimeout(step,500);
+}
+function clearMission(){
+  const m=missions(cur)[mi];
+  if(m.final&&(miss>0||hintUsed)){phase='fail';fb=`最後まで指せた！ ただしミス${miss}回${hintUsed?'・ヒント使用':''}。ノーミスでもう一度。`;fbc='ng';render();return;}
+  doneOf(cur)[mi]=true;save();phase='clear';justCleared=true;
+  fb=m.final?'このバリエーションを制覇！ 手順が身についている。':'ミッション達成！';fbc='ok';render();
+}
+function nextMission(){mi++;setupMission();}
+
+function renderSteps(){
+  const ms=missions(cur),d=doneOf(cur),el=$('steps');
+  const firstOpen=ms.findIndex((_,i)=>!d[i]);
+  el.innerHTML=ms.map((m,i)=>{
+    const done=d[i],now=i===mi,open=done||now||i===firstOpen;
+    const cls='step'+(done?' done':'')+(now?' now':'')+(m.final?' final':'');
+    const lab=m.final?(done?'✓ 総仕上げ':'総仕上げ'):(done?'✓':i+1);
+    return (i?`<span class="link${d[i-1]?' done':''}"></span>`:'')+
+      `<button class="${cls}" data-i="${i}" ${open?'':'disabled'} aria-label="ミッション${i+1}${done?' 達成済み':open?'':' 未開放'}" ${now?'aria-current="step"':''}>${lab}</button>`;
+  }).join('');
+  el.querySelectorAll('.step').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(i!==mi||phase!=='play'){mi=i;setupMission();}});
+}
+function renderMission(){
+  const ms=missions(cur),m=ms[mi],d=doneOf(cur),el=$('mission');
+  const cleared=d[mi];
+  const head=`<div class="mlabel">${m.final?'FINAL MISSION':'MISSION '+(mi+1)+' / '+(ms.length-1)}</div>
+    <h2 class="mtitle">${cleared?`<span class="check${justCleared?' pop':''}" aria-hidden="true">✓</span>`:''}${m.title}</h2>
+    <p class="mgoal">${m.goal}</p>`;
+  let act='';
+  if(phase==='intro')act=`<button class="btn" id="aDemo">お手本を見る</button><button class="btn primary" id="aPlay">${cleared?'もう一度挑戦':'挑戦する'}</button>`;
+  else if(phase==='demo')act=`<button class="btn" id="aStop">お手本を止める</button>`;
+  else if(phase==='play')act=`<button class="btn" id="aHint">ヒント</button><button class="btn" id="aRetry">やり直す</button>`;
+  else if(phase==='fail')act=`<button class="btn primary" id="aPlay">もう一度</button>`;
+  else if(phase==='clear'){
+    act=mi+1<ms.length?`<span class="doneline">次のミッションが解放された</span><button class="btn primary" id="aNext">次のミッションへ →</button>`
+            :`<button class="btn primary" id="aBack">バリエーション一覧へ</button><button class="btn" id="aPlay">もう一度</button>`;
+  }
+  el.className='mission'+(cleared?' cleared':'');
+  el.innerHTML=head+`<div class="mactions">${act}</div>`;
+  const on=(id,f)=>{const b=$(id);if(b)b.onclick=f;};
+  on('aDemo',playDemo);on('aPlay',startPlay);on('aRetry',startPlay);on('aNext',nextMission);on('aBack',()=>openStrat(VARS[cur].strat));
+  on('aStop',()=>{clearTimer();phase='intro';idx=m.start;fb='';render();});
+  on('aHint',()=>{hint=true;hintUsed=true;fb='赤枠の駒を動かそう（持ち駒のこともある）。';fbc='';renderBoard();renderInfo();});
+}
+function komaEl(promoted,gote,name){
+  const s=document.createElement('span');s.className='koma'+(gote?' g':'')+(promoted?' pr':'');s.textContent=name;return s;
+}
+function renderHand(pos,side){
+  const h=pos.h[side],el=$('hand'+side),B=built[cur],m=missions(cur)[mi];
+  const exp=(phase==='play'&&idx<m.end)?B.info[idx]:null;
+  el.innerHTML=`<span class="who">${side?'△後手':'▲先手'}の持ち駒</span><span class="pcs"></span>`;
+  const pcs=el.querySelector('.pcs');const types='RBGSNLP'.split('').filter(t=>h[t]);
+  if(!types.length){pcs.innerHTML='<span class="empty">なし</span>';return;}
+  types.forEach(t=>{
+    const b=document.createElement('button');b.type='button';b.className='hp';
+    b.setAttribute('aria-label',`${side?'後手':'先手'}の持ち駒 ${KANJI[t]} ${h[t]}枚`);
+    b.appendChild(komaEl(false,side===1,KANJI[t]));
+    if(h[t]>1){const n=document.createElement('span');n.className='n';n.textContent=h[t];b.appendChild(n);}
+    if(side===0&&phase!=='demo'){b.classList.add('can');b.onclick=()=>onHand(t);}else b.tabIndex=-1;
+    if(side===0&&sel==='h:'+t)b.classList.add('sel');
+    if(side===0&&hint&&exp&&exp.drop&&exp.dropT===t)b.classList.add('hint');
+    pcs.appendChild(b);
+  });
+}
+function selTargets(pos){
+  if(!sel)return [];
+  if(typeof sel==='string')return dropTargets(pos,sel.slice(2),0);
+  return targets(pos,sel);
+}
+function renderBoard(){
+  const B=built[cur],pos=B.states[idx],board=$('board');
+  const last=idx>0?B.info[idx-1]:null,tg=selTargets(pos);
+  const m=missions(cur)[mi];const hintSq=(phase==='play'&&hint&&idx<m.end)?B.info[idx].from:null;
+  board.classList.toggle('play',phase==='play');board.innerHTML='';
+  for(let r=1;r<=9;r++)for(let f=9;f>=1;f--){
+    const k=f*10+r,pc=pos.b[k],d=document.createElement('button');
+    d.className='sq';d.type='button';let lab=FW[f]+RANKS[r];
+    if(last&&(last.to===k||last.from===k))d.classList.add('last');
+    if(sel===k)d.classList.add('sel');
+    if(tg.includes(k)){d.classList.add('tg');if(pc)d.classList.add('cap');}
+    if(hintSq===k)d.classList.add('hint');
+    if(pc){d.appendChild(komaEl(pc.p,pc.s===1,pieceName(pc)));lab+=(pc.s?' 後手':' 先手')+pieceName(pc);}
+    d.setAttribute('aria-label',lab);if(phase!=='play')d.tabIndex=-1;
+    d.onclick=()=>onSq(k);board.appendChild(d);
+  }
+  renderHand(pos,0);renderHand(pos,1);
+}
+function renderInfo(){
+  const B=built[cur],L=VARS[cur],n=B.info.length;
+  $('mv').textContent=idx?B.labels[idx-1]:'開始局面';
+  $('count').textContent=`${idx} / ${n}手`;
+  let c='';
+  if(phase==='intro')c='「お手本を見る」で手順を確認するか、盤上の先手の駒をタップしてそのまま挑戦しよう。';
+  else{const a=idx>0?L.moves[idx-1][1]:'',b=(idx>1&&B.states[idx-1].turn===1)?L.moves[idx-2][1]:'';
+       c=[b,a].filter(Boolean).join(' ')||(idx&&B.states[idx-1].turn===1?'（相手の自然な手）':'');}
+  $('comment').textContent=c;
+  const f=$('fb');f.textContent=fb;f.className='fb '+fbc;
+  $('kifu').innerHTML=B.labels.slice(0,idx).map((l,i)=>i===idx-1?`<b>${l}</b>`:`<span>${l}</span>`).join('');
+}
+function render(){renderSteps();renderMission();renderBoard();renderInfo();}
+
+function ensurePlay(){
+  if(phase==='play')return true;
+  if(phase==='demo')return false;
+  if(phase==='clear'&&mi+1<missions(cur).length){mi++;setupMission();}
+  startPlay();return !busy;
+}
+function shake(){const b=$('board');b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');}
+function tryMove(isDrop,k){
+  const B=built[cur],m=missions(cur)[mi],exp=B.info[idx];
+  const ok=isDrop?(exp.drop&&exp.dropT===sel.slice(2)&&exp.to===k):(!exp.drop&&exp.from===sel&&exp.to===k);
+  if(ok){
+    sel=null;hint=false;idx++;fb='正解！';fbc='ok';
+    if(idx>=m.end){clearMission();return;}
+    render();autoGote();
+  }else{
+    miss++;const right=isDrop?(exp.drop&&exp.dropT===sel.slice(2)):(exp.from===sel);sel=null;
+    fb=right?'駒は合っています。行き先が違います。':(exp.drop?'その手ではありません。持ち駒を使う場面かも？':'その手ではありません。ミッションの目標を見直そう。');fbc='ng';
+    renderBoard();renderInfo();shake();
+  }
+}
+function onHand(t){
+  if(!ensurePlay()||busy)return;
+  const m=missions(cur)[mi];if(idx>=m.end)return;
+  sel=sel==='h:'+t?null:'h:'+t;renderBoard();
+}
+function onSq(k){
+  if(phase!=='play'){
+    const p0=built[cur].states[missions(cur)[mi].start].b[k];
+    if(!ensurePlay())return;
+    const pos=built[cur].states[idx];
+    if(!busy&&pos.turn===0&&p0&&p0.s===0&&pos.b[k]){sel=k;renderBoard();}
+    return;
+  }
+  if(busy)return;
+  const B=built[cur],m=missions(cur)[mi];if(idx>=m.end)return;
+  const pos=B.states[idx],pc=pos.b[k];
+  if(sel&&selTargets(pos).includes(k)){tryMove(typeof sel==='string',k);return;}
+  sel=(pc&&pc.s===0&&sel!==k)?k:null;renderBoard();
+}
+const h=location.hash.slice(1);
+if(VARS[h])openLesson(h);else if(stratOf(h))openStrat(h);else renderHome();
+})();
+</script>
+
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
+</script>
+</body>
+</html>

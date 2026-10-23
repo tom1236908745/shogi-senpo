@@ -1,0 +1,17 @@
+{
+  "name": "将棋戦法ドリル",
+  "short_name": "戦法ドリル",
+  "description": "将棋の戦法を、相手の作戦別バリエーションとクエスト形式で覚える",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e9ebe6",
+  "theme_color": "#27365f",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
